@@ -159,6 +159,15 @@ contains
                                   SRC_ID = ECTM,               &
                                   __RC__  )
 
+      CALL MAPL_AddConnectivity ( GC,                          &
+                                 SHORT_NAME  = (/ 'PFICU', &
+                                                 'PFLCU', &
+                                                 'TMPU1', &
+                                                 'TMPU2' /), &
+                                   DST_ID = CHEM,               &
+                                   SRC_ID = ECTM,               &
+                                   __RC__  )
+
       CALL MAPL_AddConnectivity ( GC, &
                                   SRC_NAME  = (/ 'CXr8     ',    &
                                                  'CYr8     ',    &

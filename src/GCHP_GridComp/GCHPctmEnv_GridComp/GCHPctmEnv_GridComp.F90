@@ -29,6 +29,8 @@
          module procedure compAreaWeightedAverage_2d
          module procedure compAreaWeightedAverage_3d
       end interface
+
+      public clamping_monitor
 !
 ! !DESCRIPTION:
 ! This GC is used to derive variables needed by the CTM GC children.
@@ -62,6 +64,55 @@
 !-------------------------------------------------------------------------
       CONTAINS
 !-------------------------------------------------------------------------
+      subroutine clamping_monitor(field_name, field_in, field_out, cmp_value, take_abs, clamp_value)
+      character(len=*), intent(in) :: field_name
+      real, pointer, dimension(:,:,:), intent(inout) :: field_in, field_out
+      real, intent(in) :: cmp_value
+      real, intent(in) :: clamp_value
+      logical, intent(in) :: take_abs
+      
+      real :: val
+      integer :: i, j, k
+      integer :: is, ie, js, je, lm
+
+      integer :: kludge_count = 0
+
+      is = lbound(field_in,1); ie = ubound(field_in,1)
+      js = lbound(field_in,2); je = ubound(field_in,2)
+      lm = size  (field_in,3)
+
+      write(6,*) 'Checking "', trim(field_name), '" for bad values...'
+      flush(6)
+
+      do i=is,ie
+         do j=js,je
+            do k=1,lm
+               val = field_in(i,j,k)
+
+               ! Check if we should take the ABS
+               if (take_abs) then
+                  val = abs(val)
+               end if
+
+               ! Compare and apply kludge
+               if (val < cmp_value) then
+                  field_out(i,j,k) = clamp_value
+                  kludge_count = kludge_count + 1
+               else
+                  field_out(i,j,k) = val
+               endif
+            end do
+         end do
+      end do
+
+      if(kludge_count > 0) then
+         write(6,*) '   Kludge cound for "', trim(field_name), '": ', kludge_count
+         flush(6)
+      endif
+
+      end subroutine
+
+
 !BOP
 !
 ! !IROUTINE: SetServices -- Sets ESMF services for this component
@@ -355,6 +406,72 @@
            DIMS       = MAPL_DimsHorzVert,                           &
            VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
       _VERIFY(STATUS)
+      
+      ! My imports
+      call MAPL_AddImportSpec ( gc,                                  &
+            SHORT_NAME = 'PFICU0',                                    &
+            LONG_NAME  = 'Downward_flux_of_ice_precipitation',        &
+            UNITS      = 'kg m-2 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationEdge,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddImportSpec ( gc,                                  &
+            SHORT_NAME = 'PFLCU0',                                    &
+            LONG_NAME  = 'Downward_flux_of_liquid_precipitation',     &
+            UNITS      = 'kg m-2 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationEdge,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddImportSpec ( gc,                                  &
+            SHORT_NAME = 'TMPU10',                                    &
+            LONG_NAME  = 'temperature',        &
+            UNITS      = 'K',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationCenter,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddImportSpec ( gc,                                  &
+            SHORT_NAME = 'TMPU20',                                    &
+            LONG_NAME  = 'temperature',     &
+            UNITS      = 'K',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationCenter,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      ! My exports
+      call MAPL_AddExportSpec ( gc,                                  &
+            SHORT_NAME = 'PFICU',                                    &
+            LONG_NAME  = 'Downward_flux_of_ice_precipitation',        &
+            UNITS      = 'kg m-2 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationEdge,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddExportSpec ( gc,                                  &
+            SHORT_NAME = 'PFLCU',                                    &
+            LONG_NAME  = 'Downward_flux_of_liquid_precipitation',     &
+            UNITS      = 'kg m-2 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationEdge,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddExportSpec ( gc,                                  &
+            SHORT_NAME = 'TMPU1',                                    &
+            LONG_NAME  = 'temperature',        &
+            UNITS      = 'K',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationCenter,           RC=STATUS  )
+      _VERIFY(STATUS)
+
+      call MAPL_AddExportSpec ( gc,                                  &
+            SHORT_NAME = 'TMPU2',                                    &
+            LONG_NAME  = 'temperature',     &
+            UNITS      = 'K',                               &
+            DIMS       = MAPL_DimsHorzVert,                          &
+            VLOCATION  = MAPL_VLocationCenter,           RC=STATUS  )
+      _VERIFY(STATUS)
 
 
       ! Set the Profiling timers
@@ -532,6 +649,9 @@
       real,     pointer, dimension(:,:,:) ::   DryPLE0 => null()
       real,     pointer, dimension(:,:,:) ::   DryPLE1 => null()
 
+      real,     pointer, dimension(:,:,:) ::   field_import => null()
+      real,     pointer, dimension(:,:,:) ::   field_export => null()
+
       integer               :: km, k, is, ie, js, je, lm, l, ik
       integer               :: ndt, isd, ied, jsd, jed
       real(r8), allocatable :: AP(:), BP(:)
@@ -678,6 +798,43 @@
       PLEr8 = 1.00d0*(DryPLE0r8)
       call fv_computeMassFluxes(UCr8, VCr8, PLEr8, &
                                    MFXr8, MFYr8, CXr8, CYr8, dt)
+
+      ! Do my checks
+      call MAPL_GetPointer( IMPORT, field_import, 'TMPU10', RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetPointer(EXPORT, field_export, 'TMPU1',  RC=STATUS)
+      _VERIFY(STATUS)
+      call clamping_monitor("TMPU1", field_import, field_export, &
+         cmp_value=100.0, &
+         take_abs=.false., &
+         clamp_value=100.0 )
+
+      call MAPL_GetPointer( IMPORT, field_import, 'TMPU20', RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetPointer(EXPORT, field_export, 'TMPU2',  RC=STATUS)
+      _VERIFY(STATUS)
+      call clamping_monitor("TMPU1", field_import, field_export, &
+         cmp_value=100.0, &
+         take_abs=.false., &
+         clamp_value=100.0 )
+
+      call MAPL_GetPointer( IMPORT, field_import, 'PFICU0', RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetPointer(EXPORT, field_export, 'PFICU',  RC=STATUS)
+      _VERIFY(STATUS)
+      call clamping_monitor("TMPU1", field_import, field_export, &
+         cmp_value=100.0, &
+         take_abs=.false., &
+         clamp_value=100.0 )
+
+      call MAPL_GetPointer( IMPORT, field_import, 'PFLCU0', RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetPointer(EXPORT, field_export, 'PFLCU',  RC=STATUS)
+      _VERIFY(STATUS)
+      call clamping_monitor("TMPU1", field_import, field_export, &
+         cmp_value=100.0, &
+         take_abs=.false., &
+         clamp_value=100.0 )
 
       !DEALLOCATE( UCr8, VCr8, PLEr8, PLE0, PLE1, DryPLE0, DryPLE1 )
       DEALLOCATE( UCr8, VCr8, PLEr8, UC, VC)
