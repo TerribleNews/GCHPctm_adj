@@ -2,10 +2,12 @@
 
 This is a fork of the source code repository for GEOS-Chem. This fork is for development of the adjoint of GCHP. Hopefully the code in it will be rolled into the [gcst repo](https://github.com/geoschem/GCHP). 
 
-If you are used to the adjoint version of GEOS-Chem classic, the new build and run systems will be very different for you. Before trying to build GCHP adjoint, I recommmend you at least familiarize yourself with the new [GCHP build process](https://gchp.readthedocs.io/en/latest/getting-started/quick-start.html). If you want to try to build the GEOS-Chem Support Team's standard version before you try this, the environment files listed below should help you. 
+If you are used to the adjoint version of GEOS-Chem classic, the new build and run systems will be very different for you. Before trying to build GCHP adjoint, I recommmend you at least familiarize yourself with the new [GCHP build process](https://gchp.readthedocs.io/en/latest/getting-started/quick-start.html). If you want to try to build the GEOS-Chem Support Team's (GCST) standard version before you try this, the environment files listed below should help you. 
 
 
-I have structured the code in such a way that downloading this repo and doing the regular `cmake` and `make` without any options will give you the standard forward executable. Because GCHP uses `cmake`, you can, in the same code directory tree, have multiple different configurations of the code. In this way you could have a `build` directory with the standard forward executable and a `build.adj` directory with the adjoint-enabled executable. The adjoint executable is set up so that separate runs of the same executable with different runtime configurations are required for the forward and reverse runs. My hope is that this makes the systems more flexible and also more portable to systems like [JEDI](https://www.jcsda.org/jcsda-project-jedi) in the future
+I have structured the code in such a way that downloading this repo and doing the regular `cmake` and `make` without any options will give you the standard forward executable. Because GCHP uses `cmake`, you can, in the same code directory tree, have multiple different configurations of the code. In this way you could have a `build` directory with the standard forward executable and a `build.adj` directory with the adjoint-enabled executable. The adjoint executable is set up so that separate runs of the same executable with different runtime configurations are required for the forward and reverse runs. My hope is that this makes the systems more flexible and also more portable to systems like [JEDI](https://www.jcsda.org/jcsda-project-jedi) in the future.
+
+Because of the large number of other projects GCHP depends upon (e.g., ESMF, MAPL, HEMCO, etc.), the GCST has decided to use git submodules to track them. This system takes some getting used to, but it does reduce the headache of trying to keep copies of multiple other repos inside GCHP while trying to keep them in sync with their own main repos.
 
 **Documentation for the standard, forward-model code**: https://gchp.readthedocs.io/en/latest/
 
@@ -86,7 +88,7 @@ export ESMF_BOPT=O
 
 ### Downloading the code
 
-Move to your source code diretory, e.g. `cd /noackup/[myusername]/GCHP/`. Clone the `add_ems_adj` branch of this repo. To use the ssh version, make sure you have your github ssh key added to your ssh-agent. Otherwise, use the second https version.
+Move to your source code diretory, e.g. `cd /noackup/[myusername]/GCHP/`. Clone the `add_ems_adj` branch of this repo. To use the ssh version, make sure you have your github ssh key added to your ssh-agent. Otherwise, use the second https version. 
 ```
 $ git clone -b add_ems_adj git@github.com:TerribleNews/GCHPctm_adj.git Code.GCHPadj
 ```
@@ -97,6 +99,11 @@ $ git clone -b add_ems_adj https://github.com/TerribleNews/GCHPctm_adj.git Code.
 then
 ```
 $ cd Code.GCHPadj
+```
+
+To fully checkout the repo, you also need to sync all the submodules. This may take a few minutes and you should see a lot of output.
+```
+$ git submodule update --init --recursive
 ```
 
 Create a file called `env.rc` in this directory and put the following lines in it:
