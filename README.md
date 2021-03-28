@@ -9,12 +9,15 @@ I have structured the code in such a way that downloading this repo and doing th
 
 Because of the large number of other projects GCHP depends upon (e.g., ESMF, MAPL, HEMCO, etc.), the GCST has decided to use git submodules to track them. This system takes some getting used to, but it does reduce the headache of trying to keep copies of multiple other repos inside GCHP while trying to keep them in sync with their own main repos.
 
+All the instructions here assume you're using `bash`. If you would like to use another shell, you will need to adjust the environment files and your run scripts accordingly.
+
 **Documentation for the standard, forward-model code**: https://gchp.readthedocs.io/en/latest/
 
 ## Building GCHP Adjoint
 
 These instructions are for building GCHP adjoint on the NASA Pleiades system. Most of the instructions should work the same elsewhere but the environment configuration will be slightly different. 
 
+GCHP uses the `cmake` build system and requires cmake version 3.13 or greater. Only cmake version 3.12 is available on pleiades, so before you start, it's a good idea to make sure you have permissions to run `/nobackupp12/clee59/software/cmake-3.16.3-Linux-x86_64/bin/cmake` by running `/nobackupp12/clee59/software/cmake-3.16.3-Linux-x86_64/bin/cmake --version`. If you get a permission error, email colin dot lee at dal dot ca with your group ID on pleiades. 
 
 The first environment file you will need is the one you will save in your home directory and link to each run directory afer you've created it. Save these lines in `~/gchp.ifort18_sgimpi_pleiades.env`
 
@@ -40,7 +43,7 @@ export ESMF_COMPILER=intel
 export MPI_ROOT=$( dirname $( dirname $( which mpiexec ) ) )
 
 # Set up the compilers
-)export FC=ifort
+export FC=ifort
 export F90=$FC
 export F9X=$FC
 export F77=$FC
@@ -210,7 +213,8 @@ In order to run:
 1. go to you run run directory (below)
 2. copy the missing restart file (below)
 3. set your gchp.env link (below)
-4. fill in your own account and email in `gchp.pleiades.run` and `gchp.adjoint.run` (not below, just open those files in your favourite editor and the missing values will be in the first few PBS lines)
+4. copy `runScriptSamples/gchp.{pleiades,adjoint}.run` to `./`
+5. fill in your own account and email in `gchp.pleiades.run` and `gchp.adjoint.run` (not below, just open those files in your favourite editor and the missing values will be in the first few PBS lines)
 
 ```
 $ cd /nobackup/[myusername]/GCHP_adj_runs/gchp_c24_adj
