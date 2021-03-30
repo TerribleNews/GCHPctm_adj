@@ -139,7 +139,8 @@ $ mkdir build
 $ cd build
 ```
 
-Use cmake to configure the build with the adjoint options turned on, then build the executable. This can be done on the head node or in an interactive compute session on pleaides. Make sure you source the `env.rc` file we created in the previous step.
+Use cmake to configure the build with the adjoint options turned on, then build the executable. This can be done on the head node or in an interactive compute session on pleaides. Make sure you source the `env.rc` file we created in the previous step.  This is the section whre you need to be using `bash`, otherwise sourcing `env.rc` will fail here. If you use another shell, you will need to rework the `env.rc` script to load the modules and set the environment variables for compiling.
+
 ```
 $ . ../env.rc
 $ cmake .. -DADJOINT=yes -DREVERSE_OPERATORS=yes
@@ -210,19 +211,39 @@ Created /nobackup/[myusername]/GCHP_adj_runs/gchp_c24_adj
 ```
 
 In order to run:
-1. go to you run run directory (below)
+1. go to your run directory (below)
 2. copy the missing restart file (below)
-3. set your gchp.env link (below)
-4. copy `runScriptSamples/gchp.{pleiades,adjoint}.run` to `./`
-5. fill in your own account and email in `gchp.pleiades.run` and `gchp.adjoint.run` (not below, just open those files in your favourite editor and the missing values will be in the first few PBS lines)
+3. copy the `gchp` binary from `CodeDir/build/bin/` or the `bin` directory under wherever you ran `cmake` and `make` above.
+4. set your gchp.env link (below)
+5. copy `runScriptSamples/gchp.{pleiades,adjoint}.run` to `./`
+6. fill in your own account and email in `gchp.pleiades.run` and `gchp.adjoint.run` (not below, just open those files in your favourite editor and the missing values will be in the first few PBS lines)
 
 ```
 $ cd /nobackup/[myusername]/GCHP_adj_runs/gchp_c24_adj
-$ cp /nobackup/clee59/SHARED/initial_GEOSChem_rst.c24_co2.nc ./
+$ cp /nobackup/clee59/SHARED/initial_GEOSChem_rst.c24_CO2.nc ./
 $ ./setEnvironment.sh ~/gchp.ifort18_sgimpi_pleiades.env
 ```
 
-You are finally read to run:
+MAPL and HEMCO must be made aware of the MPI settings. For this reason, it's a good idea to make sure your runConfig.sh and runConfig_adj.sh match your .run files:
+
+In your runConfig*.sh files:
+```
+#------------------------------------------------
+#   Compute Resources
+#------------------------------------------------
+TOTAL_CORES=48
+NUM_NODES=2
+NUM_CORES_PER_NODE=24
+```
+should line up with the PBS diretive:
+```
+#PBS -l select=2:ncpus=24:mpiprocs=48:model=bro
+```
+in your gchp.*.run files.
+
+Additionally, most changes you want to make to the model run should be done in runConfig*.sh instead of editing the .rc or input.geos files directly. In particular, the restart file, the start and end dates and times, and turning different model processes on or off are all done in runConfig*.sh.
+
+You are finally ready to run:
 ```
 $ qsub gchp.pleiades.run && tail -F gchp.log
 ```
