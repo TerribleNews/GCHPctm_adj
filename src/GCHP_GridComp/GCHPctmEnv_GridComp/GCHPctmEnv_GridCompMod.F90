@@ -435,6 +435,8 @@ module GCHPctmEnv_GridComp
       integer :: is, ie, js, je, lm
       integer :: STATUS
 
+      logical, save :: firstRun = .true.
+
       call lgr%debug('Preparing FV3 input MFX, MFY, CX, and CY')
 
       is = lbound(PLE, 1); ie = ubound(PLE, 1)
@@ -482,7 +484,7 @@ module GCHPctmEnv_GridComp
          VCr8  = dble(VC)
          
 #ifdef ADJOINT
-         if (.not. firstRun) THEN
+         if (dt .lt. 0 .and. .not. firstRun) THEN
 #endif
             ! Calculate mass fluxes and courant numbers
             call fv_computeMassFluxes(UCr8, VCr8, PLE, &
